@@ -68,7 +68,7 @@ const imageStorage = new CloudinaryStorage({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: "images",  // Save images in 'images/' folder
+    folder: "offers",  // Save images in 'images/' folder
     allowed_formats: ["jpg", "png", "jpeg"],
     resource_type: "image"
   }
