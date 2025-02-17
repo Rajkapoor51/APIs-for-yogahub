@@ -14,7 +14,7 @@ const SECRET_KEY = 'rajakpor';
 
 // CORS Configuration
 const corsOptions = {
-  origin: 'http://127.0.0.1:5500',
+  origin: 'https://hobenhozenyoga.org',
   credentials: true,
   optionSuccessStatus: 200
 };
