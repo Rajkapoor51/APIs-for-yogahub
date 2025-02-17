@@ -74,12 +74,12 @@ const storage = new CloudinaryStorage({
   }
 });
 
-const videoStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/videos/"); // Save videos to 'uploads/videos' folder
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
+const videoStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "videos",  // Save videos in 'videos/' folder
+    allowed_formats: ["mp4", "avi", "mov"],
+    resource_type: "video"
   }
 });
 
