@@ -141,7 +141,7 @@ router.post("/upload-image", uploadImage.single("image"), (req, res) => {
 
   res.json({
     message: "Image uploaded successfully!",
-    imageUrl: `https://yogahubapis.netlify.app/uploads/images/${req.file.filename}`
+    imageUrl: `https://apis-for-yogahub.onrender.com/uploads/images/${req.file.filename}`
   });
 });
 
@@ -153,7 +153,7 @@ router.post("/upload-video", uploadVideo.single("video"), (req, res) => {
 
   res.json({
     message: "Video uploaded successfully!",
-    videoUrl: `https://yogahubapis.netlify.app/uploads/videos/${req.file.filename}`
+    videoUrl: `https://apis-for-yogahub.onrender.com/uploads/videos/${req.file.filename}`
   });
 });
 
@@ -166,7 +166,7 @@ router.get("/images", (req, res) => {
       return res.status(500).json({ message: "Error retrieving images" });
     }
 
-    const images = files.map(file => `https://yogahubapis.netlify.app/uploads/images/${file}`);
+    const images = files.map(file => `https://apis-for-yogahub.onrender.com/uploads/images/${file}`);
     res.json({ images });
   });
 });
@@ -180,7 +180,7 @@ router.get("/videos", (req, res) => {
       return res.status(500).json({ message: "Error retrieving videos" });
     }
 
-    const videos = files.map(file => `https://yogahubapis.netlify.app/uploads/videos/${file}`);
+    const videos = files.map(file => `https://apis-for-yogahub.onrender.com/uploads/videos/${file}`);
     res.json({ videos });
   });
 });
@@ -226,7 +226,7 @@ router.delete("/delete-video", (req, res) => {
 
 router.post("/add-offer", upload.single("image"), (req, res) => {
   const { title, description, discount } = req.body;
-  const imageUrl = req.file ? `https://yogahubapis.netlify.app/uploads/offers/${req.file.filename}` : ""; // Empty if no image
+  const imageUrl = req.file ? `https://apis-for-yogahub.onrender.com/uploads/offers/${req.file.filename}` : ""; // Empty if no image
 
   if (!title || !description || !discount) {
     return res.status(400).json({ success: false, message: "Title, description, and discount are required." });
