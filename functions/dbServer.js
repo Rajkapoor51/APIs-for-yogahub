@@ -9,6 +9,15 @@ const serverless = require('serverless-http');
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+
+
+cloudinary.config({
+  cloud_name: "dkss75pdn",
+  api_key: "923284762234956",
+  api_secret: "Pfz_9rdD34UbcTfHsbQVhoXb8LI"
+});
 
 const SECRET_KEY = 'rajakpor';
 
@@ -47,18 +56,22 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 // Multer Storage Setup for Image Uploads
-const imageStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/images/"); // Save images to 'uploads/images' folder
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
+const imageStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "images",  // Save images in 'images/' folder
+    allowed_formats: ["jpg", "png", "jpeg"],
+    resource_type: "image"
   }
 });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/offers/"),
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "images",  // Save images in 'images/' folder
+    allowed_formats: ["jpg", "png", "jpeg"],
+    resource_type: "image"
+  }
 });
 
 const videoStorage = multer.diskStorage({
@@ -141,7 +154,7 @@ router.post("/upload-image", uploadImage.single("image"), (req, res) => {
 
   res.json({
     message: "Image uploaded successfully!",
-    imageUrl: `https://apis-for-yogahub.onrender.com/uploads/images/${req.file.filename}`
+    imageUrl: req.file.path // Cloudinary URL
   });
 });
 
@@ -153,116 +166,125 @@ router.post("/upload-video", uploadVideo.single("video"), (req, res) => {
 
   res.json({
     message: "Video uploaded successfully!",
-    videoUrl: `https://apis-for-yogahub.onrender.com/uploads/videos/${req.file.filename}`
+    videoUrl: req.file.path // Cloudinary URL
   });
 });
 
 // API: Get All Uploaded Images
-router.get("/images", (req, res) => {
-  const directoryPath = path.join(__dirname, "..", "uploads/images");
+router.get("/images", async  (req, res) => {
+  try {
+    const { resources } = await cloudinary.api.resources({
+      type: "upload",
+      prefix: "images/",
+      max_results: 20
+    });
 
-  fs.readdir(directoryPath, (err, files) => {
-    if (err) {
-      return res.status(500).json({ message: "Error retrieving images" });
-    }
-
-    const images = files.map(file => `https://apis-for-yogahub.onrender.com/uploads/images/${file}`);
+    const images = resources.map(file => file.secure_url);
     res.json({ images });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error retrieving images" });
+  }
 });
 
 // API: Get All Uploaded Videos
-router.get("/videos", (req, res) => {
-  const directoryPath = path.join(__dirname, "..", "uploads/videos");
+router.get("/videos", async(req, res) => {
+  try {
+    const { resources } = await cloudinary.api.resources({
+      type: "upload",
+      prefix: "videos/",
+      max_results: 20
+    });
 
-  fs.readdir(directoryPath, (err, files) => {
-    if (err) {
-      return res.status(500).json({ message: "Error retrieving videos" });
-    }
-
-    const videos = files.map(file => `https://apis-for-yogahub.onrender.com/uploads/videos/${file}`);
+    const videos = resources.map(file => file.secure_url);
     res.json({ videos });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error retrieving videos" });
+  }
 });
 
 // API: Remove Image
-router.delete("/delete-image", (req, res) => {
-  const { imageName } = req.body;
-
-  if (!imageName) {
-    return res.status(400).json({ message: "No image name provided" });
+router.delete("/delete-image", async(req, res) => {
+  const { public_id } = req.body;
+  if (!public_id) {
+    return res.status(400).json({ message: "No image public_id provided" });
   }
 
-  const imagePath = path.join(__dirname, "..", "uploads/images", imageName);
-
-  fs.unlink(imagePath, (err) => {
-    if (err) {
-      return res.status(500).json({ message: "Error deleting the image" });
-    }
-
+  try {
+    await cloudinary.uploader.destroy(public_id);
     res.json({ message: "Image deleted successfully" });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error deleting the image" });
+  }
 });
 
 // API: Remove Video
-router.delete("/delete-video", (req, res) => {
-  const { videoName } = req.body;
-
-  if (!videoName) {
-    return res.status(400).json({ message: "No video name provided" });
+router.delete("/delete-video", async(req, res) => {
+  const { public_id } = req.body;
+  if (!public_id) {
+    return res.status(400).json({ message: "No video public_id provided" });
   }
 
-  const videoPath = path.join(__dirname, "..", "uploads/videos", videoName);
+  try {
+    await cloudinary.uploader.destroy(public_id, { resource_type: "video" });
+    res.json({ message: "Video deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error deleting the video" });
+  }
+});
 
-  fs.unlink(videoPath, (err) => {
-    if (err) {
-      return res.status(500).json({ message: "Error deleting the video" });
+
+
+  router.post("/add-offer", upload.single("image"), (req, res) => {
+    const { title, description, discount } = req.body;
+    const imageUrl = req.file ? req.file.path : ""; // Cloudinary URL
+
+    if (!title || !description || !discount) {
+      return res.status(400).json({ success: false, message: "Title, description, and discount are required." });
     }
 
-    res.json({ message: "Video deleted successfully" });
+    const newOffer = {
+      id: idCounter++, 
+      title, 
+      description, 
+      discount: parseInt(discount, 10), // Ensure it's a number
+      image: imageUrl,
+      created_at: new Date().toISOString() // Automatically store current date and time
+    };
+
+    offers.push(newOffer);
+
+    res.json({ success: true, offer: newOffer });
   });
-});
 
 
-router.post("/add-offer", upload.single("image"), (req, res) => {
-  const { title, description, discount } = req.body;
-  const imageUrl = req.file ? `https://apis-for-yogahub.onrender.com/uploads/offers/${req.file.filename}` : ""; // Empty if no image
+  // Get all offers API
+  router.get("/get-offers", (req, res) => {
+    res.json({ offers });
+  });
 
-  if (!title || !description || !discount) {
-    return res.status(400).json({ success: false, message: "Title, description, and discount are required." });
-  }
-
-  const newOffer = {
-    id: idCounter++, 
-    title, 
-    description, 
-    discount: parseInt(discount, 10), // Ensure it's a number
-    image: imageUrl,
-    created_at: new Date().toISOString() // Automatically store current date and time
-  };
-
-  offers.push(newOffer);
-
-  res.json({ success: true, offer: newOffer });
-});
-
-
-// Get all offers API
-router.get("/get-offers", (req, res) => {
-  res.json({ offers });
-});
-
-// Delete offer API
-router.delete("/delete-offer/:id", (req, res) => {
-  const offerId = parseInt(req.params.id);
-  const index = offers.findIndex(o => o.id === offerId);
-  if (index !== -1) {
-    offers.splice(index, 1);
-    res.json({ success: true });
-  } else {
-    res.json({ success: false, message: "Offer not found" });
-  }
-});
+  // Delete offer API
+  router.delete("/delete-offer/:id", async (req, res) => {
+    const offerId = parseInt(req.params.id);
+    const index = offers.findIndex(o => o.id === offerId);
+  
+    if (index !== -1) {
+      const deletedOffer = offers.splice(index, 1)[0];
+      
+      if (deletedOffer.image) {
+        const public_id = deletedOffer.image.split("/").pop().split(".")[0];
+        await cloudinary.uploader.destroy(public_id);
+      }
+      
+      res.json({ success: true, message: "Offer deleted successfully" });
+    } else {
+      res.json({ success: false, message: "Offer not found" });
+    }
+  });
+  
 
 
 app.use("/api", router);
